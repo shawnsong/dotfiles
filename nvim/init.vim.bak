@@ -1,0 +1,11 @@
+
+
+" lua require("nvim-tree").setup()
+
+" nmap <C-n> :NvimTreeToggle<CR>
+
+
+set runtimepath^=~/.vim runtimepath+=~/.vim/after
+let &packpath=&runtimepath
+source ~/.vimrc
+

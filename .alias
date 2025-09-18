@@ -1,0 +1,106 @@
+#!/bin/bash
+#Created on 2021-04-07
+
+alias vi='nvim'
+eval $(thefuck --alias)
+alias fk='fuck'
+
+function git_commit(){ git commit -m "$*"; }
+alias tgz='tar -zxvf'
+alias utgz='tar -tar -xvf'
+alias tbz='tar -jxvf'
+alias ls='ls -G'
+alias ll='ls -lG'
+
+alias p='python3'
+
+alias grep='grep --color=auto'
+alias dcup='docker-compose up'
+alias dcd='docker-compose down'
+alias dcl='docker-compose logs -f'
+alias dps='docker ps'
+alias dimgs='docker images'
+alias dex='docker exec -it '
+
+alias giad='git add'
+alias gick='git checkout'
+alias gicm=git_commit
+alias gist='git status'
+alias gips='git push'
+alias gipssu='git push --set-upstream origin '
+alias gipl='git pull'
+alias giplom='git pull origin master'
+alias giplog='git pull origin green'
+alias gidf='git diff'
+# alias giaa='git add --all'
+alias gibr='git branch'
+alias gfom='git fetch origin master:master'
+alias gfog='git fetch origin green:green'
+alias gimm='git merge master'
+alias gimg='git merge green'
+
+
+#alias ga='gw assemble'
+alias gca='gw clean assemble'
+#alias gb='gw build'
+#alias gcb='gw clean build'
+
+alias mci="mvn clean install"
+alias mcist="mvn clean install -DskipTests"
+
+alias ra='ranger'
+
+alias uuidgen='uuidgen | tr "[:upper:]" "[:lower:]"'
+
+# use fd with fzf
+#[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+#
+#if type fd &> /dev/null; then
+#  export FZF_DEFAULT_COMMAND='fd --type f . $(git rev-parse --show-toplevel) --exclude .git --hidden'
+#  export FZF_DEFAULT_OPTS='-m --height 50% --border'
+#  export FZF_ALT_C_COMMAND="fd -t d . $HOME"
+#  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+#fi
+
+
+awscred() {
+  cat $(ll -t ~/.aws/cli/cache | sed -n '2 p' | awk '{print "/Users/shawnsong/.aws/cli/cache/"$NF}') | jq .Credentials
+}
+
+
+cdf() {
+   local file
+   local dir
+   file=$(fzf +m -q "$1") && dir=$(dirname "$file") && cd "$dir"
+}
+
+cdg() {
+  cd $(git rev-parse --show-toplevel)
+}
+
+is_in_git_repo() {
+  git rev-parse HEAD > /dev/null 2>&1
+}
+
+__gitbranchsel() {
+  local cmd="is_in_git_repo && git branch"
+  setopt localoptions pipefail no_aliases 2> /dev/null
+  local item
+  eval "$cmd" | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse --bind=ctrl-z:ignore $FZF_DEFAULT_OPTS $FZF_CTRL_T_OPTS" $(__fzfcmd) "$@" | while read item; do
+    echo -n "${(q)item} " | sed -e 's/\\\*\\//' | sed -e 's/\ //g '
+  done
+  local ret=$?
+  echo
+  return $ret
+}
+
+
+fzf-git-branch-widget() {
+  LBUFFER="${LBUFFER}$(__gitbranchsel)"
+  local ret=$?
+  zle reset-prompt
+  return $ret
+}
+zle     -N   fzf-git-branch-widget
+bindkey '^B' fzf-git-branch-widget
+
