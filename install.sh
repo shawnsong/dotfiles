@@ -15,6 +15,20 @@ else
   echo "    oh-my-zsh already installed, skipping"
 fi
 
+# -- zsh plugins --------------------------------------------------------------
+echo "==> Installing zsh plugins..."
+ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
+  git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+else
+  echo "    zsh-autosuggestions already installed, skipping"
+fi
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
+  git clone https://github.com/zsh-users/zsh-syntax-highlighting "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
+else
+  echo "    zsh-syntax-highlighting already installed, skipping"
+fi
+
 # -- oh-my-tmux ---------------------------------------------------------------
 echo "==> Installing oh-my-tmux..."
 if [ ! -d "$HOME/.tmux" ]; then
