@@ -1,20 +1,25 @@
-#!/bin/bash
-#Created on 2021-04-07
-
 alias vi='nvim'
 eval $(thefuck --alias)
 alias fk='fuck'
 
+# OS-specific ls colors
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  alias ls='ls -G'
+  alias ll='ls -lG'
+else
+  alias ls='ls --color=auto'
+  alias ll='ls -l --color=auto'
+fi
+
 function git_commit(){ git commit -m "$*"; }
 alias tgz='tar -zxvf'
-alias utgz='tar -tar -xvf'
 alias tbz='tar -jxvf'
-alias ls='ls -G'
-alias ll='ls -lG'
 
 alias p='python3'
 
 alias grep='grep --color=auto'
+
+# Docker
 alias dcup='docker-compose up'
 alias dcd='docker-compose down'
 alias dcl='docker-compose logs -f'
@@ -22,6 +27,7 @@ alias dps='docker ps'
 alias dimgs='docker images'
 alias dex='docker exec -it '
 
+# Git
 alias giad='git add'
 alias gick='git checkout'
 alias gicm=git_commit
@@ -40,11 +46,7 @@ alias gimm='git merge master'
 alias gimg='git merge green'
 
 
-#alias ga='gw assemble'
-alias gca='gw clean assemble'
-#alias gb='gw build'
-#alias gcb='gw clean build'
-
+# Build tools
 alias mci="mvn clean install"
 alias mcist="mvn clean install -DskipTests"
 
@@ -61,11 +63,6 @@ alias uuidgen='uuidgen | tr "[:upper:]" "[:lower:]"'
 #  export FZF_ALT_C_COMMAND="fd -t d . $HOME"
 #  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 #fi
-
-
-awscred() {
-  cat $(ll -t ~/.aws/cli/cache | sed -n '2 p' | awk '{print "/Users/shawnsong/.aws/cli/cache/"$NF}') | jq .Credentials
-}
 
 
 cdf() {
