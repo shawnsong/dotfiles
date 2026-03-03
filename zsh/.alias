@@ -1,6 +1,4 @@
 alias vi='nvim'
-eval $(thefuck --alias)
-alias fk='fuck'
 
 # OS-specific ls colors
 if [[ "$OSTYPE" == "darwin"* ]]; then
