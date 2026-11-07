@@ -30,6 +30,18 @@ class InstallBinTests(unittest.TestCase):
         self.assertTrue(self.target.is_symlink())
         self.assertEqual(self.target.resolve(), self.source.resolve())
         self.assertTrue(os.access(self.target, os.X_OK))
+        long_target = self.target.with_name("git-worktree-clean")
+        self.assertTrue(long_target.is_symlink())
+        self.assertEqual(long_target.resolve(), self.source.resolve())
+
+    def test_long_command_conflict_does_not_partially_install(self):
+        self.target.parent.mkdir(parents=True)
+        long_target = self.target.with_name("git-worktree-clean")
+        long_target.write_text("unrelated command\n")
+        result = self.install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.target.exists())
+        self.assertEqual(long_target.read_text(), "unrelated command\n")
 
     def test_migrates_identical_copy_and_can_be_rerun(self):
         self.target.parent.mkdir(parents=True)

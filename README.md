@@ -14,8 +14,19 @@ cd /path/to/your/project
 git wt-clean feature/example
 ```
 
-`install-bin.sh` links `~/.local/bin/git-wt-clean` to this repository's
-`bin/git-wt-clean`. It requires Git and Python 3.9+; no Python packages, sudo,
+The shared zsh aliases (`zsh/.alias`) also provide `ghwc <local-branch>`.
+If those aliases are already installed as `~/.alias`, reload them with
+`source ~/.alias`. This maps directly to `git worktree-clean`:
+
+```zsh
+ghwc feature/example
+```
+
+`git wt-clean` remains available for compatibility.
+
+`install-bin.sh` links both `~/.local/bin/git-worktree-clean` and
+`~/.local/bin/git-wt-clean` to this repository's cleanup helper.
+It requires Git and Python 3.9+; no Python packages, sudo,
 GitHub authentication, or shell aliases are needed. It does not run the full
 Linux installer or change tmux, zsh, or editor settings. Keep the repository
 in place: updating its script updates the installed command automatically.
