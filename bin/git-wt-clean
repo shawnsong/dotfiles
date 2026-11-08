@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Remove one selected linked Git worktree and its local branch, after confirmation."""
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+
+def git(*args, cwd=None, check=True):
+    return subprocess.run(["git", *args], cwd=cwd, text=True,
+                          capture_output=True, check=check)
+
+
+def worktrees():
+    records = []
+    for record in git("worktree", "list", "--porcelain", "-z").stdout.split("\0\0"):
+        if record:
+            fields = {}
+            for field in record.split("\0"):
+                if field:
+                    key, _, value = field.partition(" ")
+                    fields[key] = value
+            records.append(fields)
+    return records
+
+
+def fail(message):
+    raise ValueError(message)
+
+
+def branch_oid(ref):
+    # Loose-ref lookup can ignore case; enumerate refs to require exact spelling.
+    for row in git("for-each-ref", "--format=%(refname) %(objectname)",
+                   "refs/heads/").stdout.splitlines():
+        name, _, oid = row.partition(" ")
+        if name == ref:
+            return oid
+    return None
+
+
+def check_worktree(entry, branch, oid):
+    target = Path(entry["worktree"]).resolve()
+    if not target.is_dir():
+        fail("worktree 目录不存在但仍有登记；请先人工检查，不会自动 prune。")
+    if "locked" in entry:
+        fail("worktree 已锁定；不会强制移除。")
+    current = Path.cwd().resolve()
+    if current == target or target in current.parents:
+        fail("请从目标 worktree 目录外运行，例如主仓库目录。")
+    if git("symbolic-ref", "HEAD", cwd=target).stdout.strip() != "refs/heads/" + branch:
+        fail("worktree 的分支已变化，已停止。")
+    if git("rev-parse", "HEAD", cwd=target).stdout.strip() != oid:
+        fail("worktree 的提交已变化，已停止。")
+    status = git("status", "--porcelain=v1", "-z", "--untracked-files=all",
+                 "--ignored=matching", cwd=target).stdout
+    if any(row and not row.startswith("!! ") for row in status.split("\0")):
+        fail("存在未提交改动或未跟踪文件；请先 commit、stash 或移走文件。")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="git wt-clean",
+        description="确认后删除指定分支的 worktree 和本地分支；不删除远端分支。",
+        epilog="不会联网检查 PR 状态。仅用于已合并或确定放弃的分支；删除分支使用 -D。")
+    parser.add_argument("branch", help="本地分支名，例如 chore/remove-unused-ta-lib")
+    branch = parser.parse_args().branch
+    if branch in {"main", "master"}:
+        fail("保护分支 main/master，不允许删除。")
+    ref = "refs/heads/" + branch
+    oid = branch_oid(ref)
+    if oid is None:
+        fail("本地分支不存在或大小写不匹配：" + branch)
+    entries = worktrees()
+    matches = [entry for entry in entries if entry.get("branch") == ref]
+    if len(matches) > 1:
+        fail("多个 worktree 使用同一分支，请人工检查。")
+    entry = matches[0] if matches else None
+    if entry:
+        if Path(entry["worktree"]).resolve() == Path(entries[0]["worktree"]).resolve():
+            fail("这是主工作树，不允许删除；请换用独立 worktree。")
+        check_worktree(entry, branch, oid)
+
+    print("分支：", branch)
+    print("提交：", oid)
+    if entry:
+        print("worktree：", entry["worktree"])
+        ignored = git("status", "--short", "--ignored", "--untracked-files=normal",
+                      cwd=entry["worktree"]).stdout
+        if ignored:
+            print("以下忽略文件/目录也会被删除：\n" + ignored, end="")
+    else:
+        print("此分支没有 worktree；仅删除本地分支。")
+    print("不检查 PR 是否已合并。请确认分支已合并或愿意放弃其提交，且无数据/密钥需要保留。")
+    try:
+        answer = input("确认删除？[y/N] ").strip().lower()
+    except EOFError:
+        answer = ""
+    if answer not in {"y", "yes"}:
+        print("已取消，未删除。")
+        return 0
+
+    if branch_oid(ref) != oid:
+        fail("分支提交已变化，已停止。")
+    latest = worktrees()
+    latest_matches = [item for item in latest if item.get("branch") == ref]
+    if latest_matches != matches:
+        fail("worktree 登记已变化，已停止。")
+    if entry:
+        check_worktree(entry, branch, oid)
+        git("worktree", "remove", "--", entry["worktree"])
+        print("已删除 worktree：", entry["worktree"])
+    if branch_oid(ref) != oid:
+        fail("分支提交已变化；为保留新提交，没有删除分支。")
+    result = git("branch", "-D", "--", branch)
+    print(result.stdout, end="")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (ValueError, subprocess.CalledProcessError) as error:
+        detail = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) else str(error)
+        print("错误：" + detail, file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n已中断；如删除已开始，请检查剩余 worktree/分支状态。", file=sys.stderr)
+        sys.exit(130)
