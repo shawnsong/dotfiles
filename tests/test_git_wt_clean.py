@@ -101,6 +101,20 @@ class CleanupTests(unittest.TestCase):
         self.assertTrue(self.repo.is_dir())
         self.assertTrue(self.branch_exists("main"))
 
+    def test_main_case_variant_is_rejected_without_deleting_branch(self):
+        result = self.command("MAIN")
+        self.assertTrue(self.branch_exists("main"), result.stdout + result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("确认删除", result.stdout)
+        self.assert_preserved()
+
+    def test_checked_out_branch_case_variant_is_rejected(self):
+        result = self.command("Feature/Example")
+        self.assertTrue(self.branch_exists(), result.stdout + result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("确认删除", result.stdout)
+        self.assert_preserved()
+
     def test_primary_worktree_is_protected_on_a_feature_branch(self):
         self.git("switch", "-c", "feature/primary")
         result = self.command("feature/primary")

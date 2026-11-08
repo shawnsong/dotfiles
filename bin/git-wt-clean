@@ -28,6 +28,16 @@ def fail(message):
     raise ValueError(message)
 
 
+def branch_oid(ref):
+    # Loose-ref lookup can ignore case; enumerate refs to require exact spelling.
+    for row in git("for-each-ref", "--format=%(refname) %(objectname)",
+                   "refs/heads/").stdout.splitlines():
+        name, _, oid = row.partition(" ")
+        if name == ref:
+            return oid
+    return None
+
+
 def check_worktree(entry, branch, oid):
     target = Path(entry["worktree"]).resolve()
     if not target.is_dir():
@@ -57,10 +67,9 @@ def main():
     if branch in {"main", "master"}:
         fail("保护分支 main/master，不允许删除。")
     ref = "refs/heads/" + branch
-    resolved = git("show-ref", "--verify", "--hash", ref, check=False)
-    if resolved.returncode:
-        fail("本地分支不存在：" + branch)
-    oid = resolved.stdout.strip()
+    oid = branch_oid(ref)
+    if oid is None:
+        fail("本地分支不存在或大小写不匹配：" + branch)
     entries = worktrees()
     matches = [entry for entry in entries if entry.get("branch") == ref]
     if len(matches) > 1:
@@ -90,7 +99,7 @@ def main():
         print("已取消，未删除。")
         return 0
 
-    if git("show-ref", "--verify", "--hash", ref).stdout.strip() != oid:
+    if branch_oid(ref) != oid:
         fail("分支提交已变化，已停止。")
     latest = worktrees()
     latest_matches = [item for item in latest if item.get("branch") == ref]
@@ -100,7 +109,7 @@ def main():
         check_worktree(entry, branch, oid)
         git("worktree", "remove", "--", entry["worktree"])
         print("已删除 worktree：", entry["worktree"])
-    if git("show-ref", "--verify", "--hash", ref).stdout.strip() != oid:
+    if branch_oid(ref) != oid:
         fail("分支提交已变化；为保留新提交，没有删除分支。")
     result = git("branch", "-D", "--", branch)
     print(result.stdout, end="")
